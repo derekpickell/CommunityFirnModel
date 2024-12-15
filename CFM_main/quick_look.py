@@ -27,19 +27,19 @@ decimal_year_values = decimal_years.values
 date = decimal_year_values[15]
 
 # PLOT COMPACTION THROUGH TIME, USING DIP VECTOR
-# fig, [ax1, ax2] = plt.subplots(2)
-# ax1.plot(decimal_year_values[1:], total_compaction[1:])
-# total_compaction_cumsum = np.cumsum(total_compaction[1:])
-# ax2.plot(decimal_year_values[1:], total_compaction_cumsum)
-# ax1.set_ylabel("m")
-# ax1.set_title("Total column compaction since last timestep")
-# ax2.set_title("Cumulative compaction")
-# ax2.set_ylabel("m")
-# fig.suptitle("'DIP - total compaction' field ")
-# tc = total_compaction_cumsum[-1]/(decimal_year_values[-1] - decimal_year_values[1])
-# print(f"Cumulative compaction: {tc} m/yr")
-# plt.tight_layout()
-# total_compaction_cumsum = total_compaction_cumsum.values.tolist()
+fig, [ax1, ax2] = plt.subplots(2)
+ax1.plot(decimal_year_values[1:], total_compaction[1:])
+total_compaction_cumsum = np.cumsum(total_compaction[1:])
+ax2.plot(decimal_year_values[1:], total_compaction_cumsum)
+ax1.set_ylabel("m")
+ax1.set_title("Total column compaction since last timestep")
+ax2.set_title("Cumulative compaction")
+ax2.set_ylabel("m")
+fig.suptitle("'DIP - total compaction' field ")
+tc = total_compaction_cumsum[-1]/(decimal_year_values[-1] - decimal_year_values[1])
+print(f"Cumulative compaction: {tc} m/yr")
+plt.tight_layout()
+total_compaction_cumsum = total_compaction_cumsum.values.tolist()
 
 # with open("Summit_compaction_velocity.csv", "w", newline="") as csvfile:
 #     writer = csv.writer(csvfile)
@@ -59,19 +59,18 @@ for i in range(0, len(compaction_values)):
 
 # TOTAL COMPACTION THROUGH TIME, USING COMPACTION VARIABLE
 fig2, [ax3, ax4] = plt.subplots(2)
-d1_compactions_0 = [np.sum(x) for x in d1]
+d1_compactions_0 = [np.sum(x)*.25 for x in d1]
 ax3.plot(decimal_year_values[1:], d1_compactions_0, c='black', linestyle='dashed')
-d1_compactions_0 = [np.sum(x[0:]) for x in d1]
+d1_compactions_0 = [np.sum(x[0:])*.25 for x in d1]
 ax3.plot(decimal_year_values[1:], d1_compactions_0, c='red')
-d1_compactions = [np.sum(x[2:]) for x in d1]
+d1_compactions = [np.sum(x[2:])*.25 for x in d1]
 ax3.plot(decimal_year_values[1:], d1_compactions, c='orange')
-d1_compactions = [np.sum(x[4:]) for x in d1]
+d1_compactions = [np.sum(x[4:])*.25 for x in d1]
 ax3.plot(decimal_year_values[1:], d1_compactions, c='green')
-d1_compactions = [np.sum(x[6:]) for x in d1]
+d1_compactions = [np.sum(x[6:])*.25 for x in d1]
 ax3.plot(decimal_year_values[1:], d1_compactions, c='blue')
-d1_compactions = [np.sum(x[8:]) for x in d1]
+d1_compactions = [np.sum(x[8:])*.25 for x in d1]
 ax3.plot(decimal_year_values[1:], d1_compactions, c='purple')
-ax3.plot(decimal_year_values[1:], total_compaction[1:], c='pink')
 ax3.set_ylabel("m")
 ax3.set_title("Designated column compaction since last timestep")
 total_compaction_cumsum = np.cumsum(d1_compactions_0)

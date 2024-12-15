@@ -1658,18 +1658,20 @@ class FirnDensityNoSpin:
 
         Ifun = interpolate.interp1d(self.z, self.compaction_derek, kind = 'linear', fill_value='extrapolate')         
         answer = Ifun(grid_out)
-        # print(save, np.sum(answer) * self.c['grid_output_res'])
 
-        self.save_to_csv(answer)
+        self.save_to_csv(answer, iii)
 
         return self.dH, self.dHtot, self.comp_firn, self.dHcorr, self.dHtotcorr, self.compaction_derek
 
     ###########################
 
-    def save_to_csv(self, answer):
+    def save_to_csv(self, answer, iii):
             '''
             Appends the current variables to the CSV file.
             '''
+            
+            row = [self.c['grid_output_res'], self.modeltime[iii]] + list(answer)
+
             with open(self.csv_file, mode='a', newline='') as file:
                 writer = csv.writer(file)
-                writer.writerow(answer)
+                writer.writerow(row)
