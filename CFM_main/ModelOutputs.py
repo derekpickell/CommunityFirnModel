@@ -31,7 +31,7 @@ class ModelOutputs:
 
         if self.MOgrid:
             self.grid_out = np.arange(MOd['z'][0], MOd['z'][-1], self.c['grid_output_res'])
-
+            
         self.output_list = list(MOd.keys())
 
         for varname in self.output_list:

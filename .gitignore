@@ -38,3 +38,4 @@ docs/_templates
 /env
 *.nc4
 /CommunityFirnModel.egg-info
+/SUMup_2024_density_csv

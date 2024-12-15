@@ -27,23 +27,22 @@ for file in merra_files:
     decimal_time = year_fraction(dto)
     times.append(decimal_time)
 
-rains = []; snows = []; surface_temp = []; east_stress = []; north_stress = []; evaps = []
+rains = []; bdot = []; surface_temp = []; east_stress = []; north_stress = []; evaps = []
 for file in merra_files:
     ds = xr.open_dataset(file)
 
-    # snowfall - good
-    snow = ds['PRECSNO'] 
-    point_snow = snow.interp(lat=lat, lon=lon, method='linear').values[0] *31536000/917
-    snows.append(point_snow)
+    # accumulation - good
+    point_snow = ds['PRECSNO'] .interp(lat=lat, lon=lon, method='linear').values[0] *31536000/917
+    point_evap = ds['EVAP'] .interp(lat=lat, lon=lon, method='linear').values[0] *31536000/917
+    bdot.append(point_snow-point_evap)
+    evaps.append(point_evap)
 
     # skin temp - good
-    skin = ds['TSH']
-    point_skin = skin.interp(lat=lat, lon=lon, method='linear')
+    point_skin = ds['TSH'].interp(lat=lat, lon=lon, method='linear')
     surface_temp.extend(point_skin)
 
     # rains - mostly good. No 2021 rain??
-    total_precip = ds['PRECTOT']
-    point_precip = total_precip.interp(lat=lat, lon=lon, method='linear').values[0] *31536000/917
+    point_precip = ds['PRECTOT'].interp(lat=lat, lon=lon, method='linear').values[0] *31536000/917
     rain = point_precip - point_snow
     rains.append(rain)
 
@@ -88,21 +87,30 @@ def extend_data(list1, list2, start_year, repeat_year_start=1981.99836849, repea
     return final_dates, final_data
     
 
-example = np.genfromtxt('/Users/f005cb1/Documents/Github/CommunityFirnModel/CFM_main/CFMinput_example/example_TSKIN.csv', delimiter=',')     
+example = np.genfromtxt('/Users/f005cb1/Documents/Github/CommunityFirnModel/CFM_main/CFMinput_example/example_RAIN.csv', delimiter=',')     
 example_times = example[0]
 example_data = example[1]
 
-# SURFACE TEMPS
+# EXTEND DATA TO 1450
 final_times, final_temps = extend_data(times, surface_temp, 1450)
-write_csv(final_times, final_temps, "1450-2024_Summit_temps.csv")
-# plt.plot(final_times, final_temps, c='r')
+_, final_bdot = extend_data(times, bdot, 1450)
+_, final_rains = extend_data(times, rains, 1450)
+_, final_subl = extend_data(times, evaps, 1450)
+
+# PLOT
+# plt.plot(times, rains, c='r')
 # plt.plot(example_times, example_data, c='b')
 # plt.show()
 
-# SNOW FALL
-_, final_snows = extend_data(times, snows, 1450)
-write_csv(final_times, final_snows, "1450-2024_Summit_bdot.csv")
+# WRITE TO CSV
+# SURFACE TEMPS
+write_csv(final_times, final_temps, "1450-2024_Summit_temps.csv")
+
+# ACCUMULATION
+write_csv(final_times, final_bdot, "1450-2024_Summit_bdot.csv")
 
 # RAINS
-_, final_rains = extend_data(times, rains, 1450)
 write_csv(final_times, final_rains, "1450-2024_Summit_rain.csv")
+
+# SUBLIMATION
+write_csv(final_times, final_subl, "1450-2024_Summit_subl.csv")

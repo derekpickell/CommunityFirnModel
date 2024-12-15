@@ -24,6 +24,7 @@ from isotopeDiffusion import isotopeDiffusion
 from SEB import SurfaceEnergyBudget
 from firn_density_spin import FirnDensitySpin
 import numpy as np
+import scipy.interpolate as interpolate
 import csv
 import json
 import sys
@@ -105,6 +106,8 @@ class FirnDensityNoSpin:
             self.c          = json.loads(jsonString)
 
         self.SEBfluxes = SEBfluxes
+
+        self.csv_file = "output_firn_layers.csv"
 
         spinner = os.path.exists(os.path.join(self.c['resultsFolder'], self.c['spinFileName']))
         
@@ -840,10 +843,12 @@ class FirnDensityNoSpin:
         dHOutcorr   = 0
         dHOutcorrC  = 0
         DIPhz       = self.DIPhorizon #set the first element in DIPhz to be the horizon depth
+        compaction_derek = []
         
 
         self.BCO = np.array([bcoAgeMart, bcoDepMart, bcoAge830, bcoDep830, LIZAgeMart, LIZDepMart, bcoAge815, bcoDep815, z_co])
         self.DIP = np.array([intPhi, dHOut, dHOutC, compOut, dHOutcorr, dHOutcorrC, DIPhz])
+        self.DIP2 = np.array(compaction_derek)
         #####################
         self.climate = np.array([self.bdot[0],self.Ts[0],self.snowmelt[0],self.rain[0],self.sublim[0]])
         #####################
@@ -1078,13 +1083,16 @@ class FirnDensityNoSpin:
             self.rho        = self.rho + self.dt[iii] * drho_dt
             self.dz_old     = np.copy(self.dz) # model volume thicknesses before the compaction
             self.sdz_old    = np.sum(self.dz) # old total column thickness (s for sum)
+            self.sdz_old_sav = self.dz
             self.z_old      = np.copy(self.z)
             self.dz         = self.mass / self.rho * self.dx # new dz after compaction
+            # print("1088", len(self.dz))
             self.z          = self.dz.cumsum(axis = 0)
             # znew = np.copy(self.z) 
             self.z          = np.concatenate(([0], self.z[:-1]))
 
             sdz_new = np.sum(self.dz)
+            sdz_new_dz_save = self.dz
             dsdz = sdz_new - self.sdz_old
             self.dsdz_sum = self.dsdz_sum + dsdz
 
@@ -1152,6 +1160,7 @@ class FirnDensityNoSpin:
 
                     else: # Dry firn column and no input of meltwater                        
                         self.dzn     = self.dz[0:self.compboxes] # Not sure this is necessary
+                        # print("1162", len(self.dzn), len(self.dz))
                         self.refreeze, self.runoff, self.meltvol, self.rainvol, self.dh_melt = 0.,0.,0.,0.,0.
                 ### end bucket ##################
 
@@ -1263,7 +1272,7 @@ class FirnDensityNoSpin:
             ####################
 
             self.sdz_new    = np.sum(self.dz) #total column thickness after densification, melt, horizontal strain,  before new snow added
-
+            self.sdz_new_dz_save = self.dz
             ### Dcon: user-specific code goes here. 
             # self.Dcon[self.LWC>0] = self.Dcon[self.LWC>0] + 1 # for example, keep track of how many times steps the layer has had water
 
@@ -1448,7 +1457,7 @@ class FirnDensityNoSpin:
                 bcoAgeMart, bcoDepMart, bcoAge830, bcoDep830, LIZAgeMart, LIZDepMart, bcoAge815, bcoDep815  = self.update_BCO(iii)
 
                 intPhi, self.DIPc, z_co  = self.update_DIP()
-                dHOut, dHOutC, compOut, dHOutcorr, dHOutcorrC  = self.update_dH(iii)
+                dHOut, dHOutC, compOut, dHOutcorr, dHOutcorrC, compaction_derek  = self.update_dH(iii)
                 try:
                     ind_z = np.where(self.z>=self.DIPhorizon)[0][0]
                     DIPhz = self.DIPc[ind_z]
@@ -1466,6 +1475,7 @@ class FirnDensityNoSpin:
 
                 self.BCO  = np.array([bcoAgeMart, bcoDepMart, bcoAge830, bcoDep830, LIZAgeMart, LIZDepMart, bcoAge815, bcoDep815, z_co])
                 self.DIP  = np.array([intPhi, dHOut, dHOutC, compOut, dHOutcorr, dHOutcorrC,DIPhz])
+                self.DIP2 = np.array(compaction_derek)
 
                 MOd = {key:value for key, value in self.__dict__.items() if key in self.output_list}
 
@@ -1634,8 +1644,32 @@ class FirnDensityNoSpin:
         self.dHAllcorr.append(self.dHcorr)
         self.dHtotcorr = np.sum(self.dHAllcorr)
         self.comp_firn = self.sdz_new - self.sdz_old #total compaction of just the firn during the previous time step
+        self.compaction_derek  = self.sdz_new_dz_save - self.sdz_old_sav
+        # grid_out = np.arange(self.z[0], self.z[-1], self.c['grid_output_res'])
+        grid_out = np.arange(0.0, 297.3061453830327, self.c['grid_output_res'])
 
-        return self.dH, self.dHtot, self.comp_firn, self.dHcorr, self.dHtotcorr
+        save = np.sum(self.compaction_derek)
+
+        layer_thickness = np.zeros_like(self.z)
+        layer_thickness[1:-1] = (np.diff(self.z[:-1]) + np.diff(self.z[1:])) / 2
+        layer_thickness[0] = (self.z[1] - self.z[0])/2   # First point
+        layer_thickness[-1] = (self.z[-1] - self.z[-2])/2   # Last point
+        self.compaction_derek = self.compaction_derek / layer_thickness
+
+        Ifun = interpolate.interp1d(self.z, self.compaction_derek, kind = 'linear', fill_value='extrapolate')         
+        answer = Ifun(grid_out)
+        # print(save, np.sum(answer) * self.c['grid_output_res'])
+
+        self.save_to_csv(answer)
+
+        return self.dH, self.dHtot, self.comp_firn, self.dHcorr, self.dHtotcorr, self.compaction_derek
 
     ###########################
 
+    def save_to_csv(self, answer):
+            '''
+            Appends the current variables to the CSV file.
+            '''
+            with open(self.csv_file, mode='a', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(answer)
